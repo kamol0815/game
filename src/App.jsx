@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 
 const gameBase = 'http://gamespot.uz:5050'
 const games = [
   { title: 'Candy Crush Game', path: '01-Candy-Crush-Game', mode: 'Puzzle', tag: 'Puzzle', accent: '#f97316' },
   { title: 'Archery Game', path: '02-Archery-Game', mode: 'Arcade', tag: 'Action', accent: '#22c55e' },
-  { title: 'Speed Typing Game', path: '03-Speed-Typing-Game', mode: 'Typing', tag: 'Arcade', accent: '#38bdf8' },
   { title: 'Breakout Game', path: '04-Breakout-Game', mode: 'Arcade', tag: 'Arcade', accent: '#facc15' },
   { title: 'Minesweeper Game', path: '05-Minesweeper-Game', mode: 'Logic', tag: 'Puzzle', accent: '#fb7185' },
   { title: 'Tower Blocks', path: '06-Tower-Blocks', mode: 'Stack', tag: 'Arcade', accent: '#a855f7' },
@@ -55,6 +54,24 @@ function App() {
   const [activeTag, setActiveTag] = useState('Barchasi')
   const [orderId, setOrderId] = useState('')
   const [loading, setLoading] = useState({ send: false, verify: false, resend: false })
+  const sessionKey = 'gamespot_session'
+
+  useEffect(() => {
+    const stored = localStorage.getItem(sessionKey)
+    if (!stored) return
+    try {
+      const parsed = JSON.parse(stored)
+      if (parsed.expiresAt && parsed.expiresAt > Date.now() && parsed.phone) {
+        setUser({ phone: parsed.phone, role: 'Player' })
+        setStage('play')
+        setPhone(parsed.phone.startsWith('+') ? parsed.phone : `+${parsed.phone}`)
+      } else {
+        localStorage.removeItem(sessionKey)
+      }
+    } catch {
+      localStorage.removeItem(sessionKey)
+    }
+  }, [])
 
   const heroTitle = useMemo(() => {
     if (stage === 'play' && user) return `${user.phone} — start o'yin!`
@@ -132,6 +149,8 @@ function App() {
         setUser({ phone, role: 'Player' })
         setStage('play')
         setFlash('Tasdiqlandi. O‘yinlarni boshlash mumkin.')
+        const expiresAt = Date.now() + 24 * 60 * 60 * 1000
+        localStorage.setItem(sessionKey, JSON.stringify({ phone, expiresAt }))
       } else {
         throw new Error(data.message || 'Tasdiqlash muvaffaqiyatsiz')
       }
@@ -187,10 +206,10 @@ function App() {
       <div className="bg-glow glow-b" />
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark">GX</div>
+          <div className="brand-mark">GS</div>
           <div>
-            <div className="brand-title">GameX Play</div>
-            <div className="brand-sub">Telefon orqali tezkor kirish + online o‘yinlar</div>
+            <div className="brand-title">GameSpot.uz</div>
+            <div className="brand-sub">Telefon orqali tezkor kirish + onlayn o‘yinlar</div>
           </div>
         </div>
         <div className="pill">
@@ -309,7 +328,6 @@ function App() {
           </div>
               <div className="cta-row">
                 <button className="primary" onClick={openInNewTab}>Playing game..</button>
-                <button className="ghost" onClick={() => handleSelectGame(selectedGame)}>Inline</button>
               </div>
               <div
                 className="poster"
