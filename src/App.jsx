@@ -98,7 +98,7 @@ function App() {
       }
       setOrderId(data.order.order_id)
       setStage('otp')
-      setFlash(`SMS yuborildi. Order ID: ${data.order.order_id}`)
+      setFlash('SMS yuborildi.')
     } catch (err) {
       setFlash(`Xato: ${err.message}`)
     } finally {
@@ -292,33 +292,23 @@ function App() {
                   <div className="tile-art" style={{ background: g.accent }}>
                     <span className="pill-soft">{g.tag}</span>
                   </div>
-                  <div className="tile-body">
-                    <div className="game-title">{g.title}</div>
-                    <div className="muted small">{g.mode}</div>
-                    <div className="meta-row">
-                      <span className="pill-soft">{g.online} online</span>
-                      <span className="pill-soft">{g.ping} ms</span>
-                      <span className="status">{g.status}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="player-pane">
-              <div className="row tight">
-                <div>
-                  <div className="row-title">{selectedGame.title}</div>
-                  <div className="muted">{selectedGame.mode} · {selectedGame.tag}</div>
-                </div>
-                <div className="row-meta">
-                  <span>{selectedGame.online} online</span>
-                  <span className="pill-soft">{selectedGame.ping} ms</span>
-                  <span className="status">{selectedGame.status}</span>
-                </div>
+              <div className="tile-body">
+                <div className="game-title">{g.title}</div>
+                <div className="muted small">{g.mode}</div>
               </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="player-pane">
+          <div className="row tight">
+            <div>
+              <div className="row-title">{selectedGame.title}</div>
+              <div className="muted">{selectedGame.mode} · {selectedGame.tag}</div>
+            </div>
+          </div>
               <div className="cta-row">
-                <button className="primary" onClick={openInNewTab}>Yangi oynada ochish</button>
+                <button className="primary" onClick={openInNewTab}>Playing game..</button>
                 <button className="ghost" onClick={() => handleSelectGame(selectedGame)}>Inline</button>
               </div>
               <div
