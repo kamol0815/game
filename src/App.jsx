@@ -206,6 +206,8 @@ function App() {
   const [user, setUser] = useState(null)
   const [search, setSearch] = useState('')
   const [activeTag, setActiveTag] = useState('Barchasi')
+  const [orderId, setOrderId] = useState('')
+  const [loading, setLoading] = useState({ send: false, verify: false, resend: false })
 
   const heroTitle = useMemo(() => {
     if (stage === 'play' && user) return `${user.phone} — start o'yin!`
@@ -221,32 +223,102 @@ function App() {
     })
   }, [search, activeTag])
 
-  const handleSend = () => {
-    if (!phone || phone.replace(/\D/g, '').length < 9) {
-      setFlash('Telefon raqamni to‘liq kiriting')
+  const apiBase = import.meta.env.VITE_API_BASE || ''
+  const normalizeMsisdn = (raw) => raw.replace(/\D/g, '')
+
+  const handleSend = async () => {
+    const msisdn = normalizeMsisdn(phone)
+    if (!msisdn || msisdn.length !== 12) {
+      setFlash('Telefon raqamni to‘liq va +998 formatda kiriting')
       return
     }
-    const code = Math.floor(1000 + Math.random() * 9000).toString()
-    setSentCode(code)
-    setStage('otp')
-    setFlash(`SMS kod jo‘natildi. Demo uchun kod: ${code}`)
-  }
-
-  const handleVerify = () => {
-    if (otp === sentCode) {
-      setUser({ phone, role: 'Player' })
-      setStage('play')
-      setFlash('Tasdiqlandi. O‘yinlarni boshlash mumkin.')
-    } else {
-      setFlash('Kod noto‘g‘ri. Qayta urinib ko‘ring.')
+    try {
+      setLoading((p) => ({ ...p, send: true }))
+      setFlash('SMS jo‘natilmoqda...')
+      const res = await fetch(`${apiBase}/api/ucell/open`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          msisdn,
+          origin_order_id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+          language: 'uz',
+        }),
+      })
+      if (!res.ok) throw new Error(`Open order failed: ${res.status}`)
+      const data = await res.json()
+      if (data.status !== 'ok' || !data.order?.order_id) {
+        throw new Error('Order ID olinmadi')
+      }
+      setOrderId(data.order.order_id)
+      setStage('otp')
+      setFlash(`SMS yuborildi. Order ID: ${data.order.order_id}`)
+    } catch (err) {
+      setFlash(`Xato: ${err.message}`)
+    } finally {
+      setLoading((p) => ({ ...p, send: false }))
     }
   }
 
-  const handleResend = () => {
-    if (!sentCode) return handleSend()
-    const code = Math.floor(1000 + Math.random() * 9000).toString()
-    setSentCode(code)
-    setFlash(`Yangi kod: ${code}`)
+  const handleVerify = async () => {
+    if (!otp || otp.length < 4) {
+      setFlash('SMS kodni kiriting')
+      return
+    }
+    if (!orderId) {
+      setFlash('Order ID topilmadi. Qayta yuboring.')
+      return
+    }
+    try {
+      setLoading((p) => ({ ...p, verify: true }))
+      setFlash('Tasdiqlanmoqda...')
+      const res = await fetch(`${apiBase}/api/ucell/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: orderId,
+          password: otp,
+        }),
+      })
+      if (!res.ok) throw new Error(`Validate failed: ${res.status}`)
+      const data = await res.json()
+      if (data.status === 'ok') {
+        setUser({ phone, role: 'Player' })
+        setStage('play')
+        setFlash('Tasdiqlandi. O‘yinlarni boshlash mumkin.')
+      } else {
+        throw new Error(data.message || 'Tasdiqlash muvaffaqiyatsiz')
+      }
+    } catch (err) {
+      setFlash(`Xato: ${err.message}`)
+    } finally {
+      setLoading((p) => ({ ...p, verify: false }))
+    }
+  }
+
+  const handleResend = async () => {
+    if (!orderId) {
+      setFlash('Order ID topilmadi. Qayta yuborishdan oldin telefonni kiriting.')
+      return handleSend()
+    }
+    try {
+      setLoading((p) => ({ ...p, resend: true }))
+      setFlash('Kod qayta yuborilmoqda...')
+      const url = new URL(`${apiBase}/api/ucell/resend`, window.location.origin)
+      url.searchParams.set('order_id', orderId)
+      url.searchParams.set('language', 'uz')
+      const res = await fetch(url.toString(), { method: 'GET' })
+      if (!res.ok) throw new Error(`Resend failed: ${res.status}`)
+      const data = await res.json()
+      if (data.status === 'ok') {
+        setFlash('Yangi kod yuborildi.')
+      } else {
+        throw new Error(data.message || 'Qayta yuborishda xato')
+      }
+    } catch (err) {
+      setFlash(`Xato: ${err.message}`)
+    } finally {
+      setLoading((p) => ({ ...p, resend: false }))
+    }
   }
 
   const handleSelectGame = (game) => {
@@ -302,39 +374,43 @@ function App() {
             to‘g‘ri foydalanuvchilar uchun.
           </p>
 
-          {stage === 'phone' && (
-            <div className="form">
-              <label>Telefon raqam</label>
-              <div className="input-wrap">
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+998 90 123 45 67"
-                />
-                <button onClick={handleSend}>SMS kod jo‘natish</button>
+            {stage === 'phone' && (
+              <div className="form">
+                <label>Telefon raqam</label>
+                <div className="input-wrap">
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+998 90 123 45 67"
+                  />
+                  <button onClick={handleSend} disabled={loading.send}>
+                    {loading.send ? 'Yuborilmoqda...' : 'SMS kod jo‘natish'}
+                  </button>
+                </div>
+                <div className="hint">Demo rejimida kod shu yerning o‘zida ko‘rinadi.</div>
               </div>
-              <div className="hint">Demo rejimida kod shu yerning o‘zida ko‘rinadi.</div>
-            </div>
-          )}
+            )}
 
-          {stage === 'otp' && (
-            <div className="form">
-              <label>SMS kod</label>
-              <div className="input-wrap">
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="4 xonali kod"
-                />
-                <button onClick={handleVerify}>Tasdiqlash</button>
+            {stage === 'otp' && (
+              <div className="form">
+                <label>SMS kod</label>
+                <div className="input-wrap">
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="4 xonali kod"
+                  />
+                  <button onClick={handleVerify} disabled={loading.verify}>
+                    {loading.verify ? 'Tekshirilmoqda...' : 'Tasdiqlash'}
+                  </button>
+                </div>
+                <div className="hint linkish" onClick={loading.resend ? undefined : handleResend}>
+                  {loading.resend ? 'Yuborilmoqda...' : 'Kod kelmadimi? Qayta yuborish'}
+                </div>
               </div>
-              <div className="hint linkish" onClick={handleResend}>
-                Kod kelmadimi? Qayta yuborish
-              </div>
-            </div>
-          )}
+            )}
 
           {flash && <div className="flash">{flash}</div>}
         </section>
