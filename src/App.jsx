@@ -226,23 +226,16 @@ function App() {
             Telefon raqamini kiriting, SMS orqali tasdiqlang va darhol o‘yinlarga kiring.
             Hech qanday ortiqcha statistika — faqat ro‘yxatdan o‘tish va o‘ynash.
           </p>
-          <div className="tagline">
-            <span className="dot small" />
-            Login → SMS → O‘yin
-          </div>
         </section>
 
         <section className="card auth">
           <div className="pill muted">SMS orqali kirish</div>
           <h2>Telefon raqam bilan start</h2>
-          <p className="muted">
-            Telefon raqamni kiriting, SMS kodni tasdiqlang va o‘yinlarni oching. Bu UI to‘g‘ridan
-            to‘g‘ri foydalanuvchilar uchun.
-          </p>
+          <p className="muted">Telefon raqamni kiriting, SMS kodni tasdiqlang va o‘yinlarni oching.</p>
 
-            {stage === 'phone' && (
-              <div className="form">
-                <label>Telefon raqam</label>
+          {stage === 'phone' && (
+            <div className="form">
+              <label>Telefon raqam</label>
                 <div className="input-wrap">
                   <input
                     type="tel"
