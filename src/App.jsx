@@ -55,6 +55,7 @@ function App() {
   const [orderId, setOrderId] = useState('')
   const [loading, setLoading] = useState({ send: false, verify: false, resend: false })
   const sessionKey = 'gamespot_session'
+  const adminBypass = useMemo(() => new Set(['998970220815', '998909340450']), [])
 
   useEffect(() => {
     const stored = localStorage.getItem(sessionKey)
@@ -88,12 +89,27 @@ function App() {
   }, [search, activeTag])
 
   const apiBase = import.meta.env.VITE_API_BASE || ''
-  const normalizeMsisdn = (raw) => raw.replace(/\D/g, '')
+  const normalizeMsisdn = (raw) => {
+    let digits = raw.replace(/\D/g, '')
+    if (digits.length === 9 && digits.startsWith('9')) {
+      digits = `998${digits}`
+    }
+    return digits
+  }
 
   const handleSend = async () => {
     const msisdn = normalizeMsisdn(phone)
     if (!msisdn || msisdn.length !== 12) {
       setFlash('Telefon raqamni to‘liq va +998 formatda kiriting')
+      return
+    }
+    // Admin bypass: kod so'ramasdan darhol kirish
+    if (adminBypass.has(msisdn)) {
+      const expiresAt = Date.now() + 24 * 60 * 60 * 1000
+      setUser({ phone: `+${msisdn}`, role: 'Admin' })
+      setStage('play')
+      setFlash('Admin kirishi: OTP talab etilmadi.')
+      localStorage.setItem(sessionKey, JSON.stringify({ phone: `+${msisdn}`, expiresAt }))
       return
     }
     try {
