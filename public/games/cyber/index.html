@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cyber Stadium</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: radial-gradient(circle at 10% 10%, #1e293b, #0b1220 60%);
+      color: #e5e7eb;
+      display: grid;
+      place-items: center;
+      height: 100vh;
+    }
+    .shell {
+      width: min(520px, 94vw);
+      background: rgba(12, 19, 35, 0.92);
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      background: #0a0f1a;
+      border: 1px solid rgba(0, 255, 255, 0.18);
+    }
+    .meta { font-size: 12px; color: #cbd5e1; }
+    .badge { padding: 4px 8px; border-radius: 999px; background: #22d3ee33; color: #a5f3fc; border: 1px solid #22d3ee55; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <div class="meta">Cyber Stadium</div>
+        <strong>Neon arenada orb to‘plang, lazerlardan qoching</strong>
+      </div>
+      <span class="badge">WASD / ←↑→↓</span>
+    </header>
+    <canvas id="c" width="500" height="340"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c')
+    const ctx = canvas.getContext('2d')
+    const keys = new Set()
+    const player = { x: 80, y: 160, r: 12, speed: 2.4 }
+    let score = 0
+    let orbs = []
+    let lasers = []
+
+    function spawnOrb() {
+      orbs.push({ x: Math.random() * 460 + 20, y: Math.random() * 300 + 20, r: 6 })
+      if (orbs.length > 7) orbs.shift()
+    }
+
+    function spawnLaser() {
+      const horizontal = Math.random() > 0.5
+      if (horizontal) {
+        lasers.push({
+          x: -40,
+          y: Math.random() * 320,
+          w: 60,
+          h: 8,
+          vx: 2.4,
+          vy: 0,
+        })
+      } else {
+        lasers.push({
+          x: Math.random() * 460,
+          y: -40,
+          w: 8,
+          h: 60,
+          vx: 0,
+          vy: 2.4,
+        })
+      }
+      if (lasers.length > 6) lasers.shift()
+    }
+
+    function handleInput() {
+      if (keys.has('ArrowUp') || keys.has('w')) player.y -= player.speed
+      if (keys.has('ArrowDown') || keys.has('s')) player.y += player.speed
+      if (keys.has('ArrowLeft') || keys.has('a')) player.x -= player.speed
+      if (keys.has('ArrowRight') || keys.has('d')) player.x += player.speed
+      player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x))
+      player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y))
+    }
+
+    function draw() {
+      ctx.fillStyle = '#05080f'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+      grad.addColorStop(0, 'rgba(34, 211, 238, 0.05)')
+      grad.addColorStop(1, 'rgba(59, 130, 246, 0.08)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)'
+      for (let i = 0; i < canvas.width; i += 20) {
+        ctx.beginPath()
+        ctx.moveTo(i, 0)
+        ctx.lineTo(i, canvas.height)
+        ctx.stroke()
+      }
+
+      ctx.fillStyle = '#22d3ee'
+      ctx.beginPath()
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#fbbf24'
+      orbs.forEach((o) => {
+        ctx.beginPath()
+        ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2)
+        ctx.fill()
+      })
+
+      ctx.fillStyle = '#ef4444'
+      lasers.forEach((l) => ctx.fillRect(l.x, l.y, l.w, l.h))
+
+      ctx.fillStyle = '#e5e7eb'
+      ctx.font = '14px system-ui'
+      ctx.fillText(`Score: ${score}`, 14, 22)
+    }
+
+    function update() {
+      handleInput()
+
+      orbs = orbs.filter((o) => {
+        const dx = player.x - o.x
+        const dy = player.y - o.y
+        if (Math.hypot(dx, dy) < player.r + o.r) {
+          score += 10
+          spawnOrb()
+          return false
+        }
+        return true
+      })
+
+      lasers.forEach((l) => {
+        l.x += l.vx
+        l.y += l.vy
+      })
+      lasers = lasers.filter((l) => l.x > -80 && l.x < 560 && l.y > -80 && l.y < 420)
+
+      lasers.forEach((l) => {
+        const dx = player.x - (l.x + l.w / 2)
+        const dy = player.y - (l.y + l.h / 2)
+        if (Math.abs(dx) < player.r + l.w / 2 && Math.abs(dy) < player.r + l.h / 2) {
+          score = Math.max(0, score - 20)
+          l.x += l.vx * 12
+          l.y += l.vy * 12
+        }
+      })
+    }
+
+    function loop() {
+      update()
+      draw()
+      requestAnimationFrame(loop)
+    }
+
+    setInterval(spawnOrb, 1200)
+    setInterval(spawnLaser, 1500)
+    spawnOrb()
+    spawnOrb()
+
+    window.addEventListener('keydown', (e) => keys.add(e.key))
+    window.addEventListener('keyup', (e) => keys.delete(e.key))
+    loop()
+  </script>
+</body>
+</html>

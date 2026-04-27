@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Desert Runner</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: radial-gradient(circle at 80% 10%, #fbbf24, #7c2d12 55%);
+      color: #0f172a;
+      display: grid;
+      place-items: center;
+      height: 100vh;
+    }
+    .shell {
+      width: min(520px, 94vw);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      background: linear-gradient(#fde68a, #fbbf24);
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+    .meta { font-size: 12px; color: #334155; }
+    .badge { padding: 4px 8px; border-radius: 999px; background: #f9731633; color: #7c2d12; border: 1px solid #f9731655; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <div class="meta">Desert Runner</div>
+        <strong>Quyoshda yuguring, kaktus va toshlardan qoching</strong>
+      </div>
+      <span class="badge">Space / ↑ sakrash</span>
+    </header>
+    <canvas id="c" width="500" height="320"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c')
+    const ctx = canvas.getContext('2d')
+    const ground = 260
+    let x = 60
+    let y = ground
+    let vy = 0
+    let gravity = 0.35
+    let score = 0
+    let obstacles = []
+
+    function spawnObstacle() {
+      obstacles.push({
+        x: 520,
+        y: ground,
+        w: 16 + Math.random() * 20,
+        h: 30 + Math.random() * 20,
+        vx: 2.4 + Math.random() * 0.6,
+      })
+      if (obstacles.length > 6) obstacles.shift()
+    }
+
+    function update() {
+      vy += gravity
+      y += vy
+      if (y > ground) {
+        y = ground
+        vy = 0
+      }
+
+      obstacles.forEach((o) => {
+        o.x -= o.vx
+      })
+      obstacles = obstacles.filter((o) => o.x > -40)
+
+      obstacles.forEach((o) => {
+        if (x < o.x + o.w && x + 26 > o.x && y < o.y + o.h && y + 26 > o.y) {
+          score = Math.max(0, score - 15)
+          o.x = -50
+        }
+      })
+
+      score += 0.1
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = '#fef3c7'
+      ctx.fillRect(0, ground + 20, canvas.width, canvas.height - ground)
+      ctx.fillStyle = '#f97316'
+      ctx.fillRect(0, ground + 10, canvas.width, 4)
+
+      ctx.fillStyle = '#1f2937'
+      ctx.fillRect(x, y - 20, 26, 26)
+
+      ctx.fillStyle = '#dc2626'
+      obstacles.forEach((o) => ctx.fillRect(o.x, o.y - o.h, o.w, o.h))
+
+      ctx.fillStyle = '#1f2937'
+      ctx.font = '14px system-ui'
+      ctx.fillText(`Score: ${score.toFixed(0)}`, 14, 20)
+    }
+
+    function loop() {
+      update()
+      draw()
+      requestAnimationFrame(loop)
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === ' ' || e.key === 'ArrowUp') && y >= ground) {
+        vy = -6.8
+      }
+    })
+
+    setInterval(spawnObstacle, 1400)
+    spawnObstacle()
+    loop()
+  </script>
+</body>
+</html>

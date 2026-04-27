@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mini Stack Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #1f2937, #0b1220 60%);
+      color: #e5e7eb;
+      display: grid;
+      place-items: center;
+      height: 100vh;
+    }
+    .shell {
+      width: min(520px, 94vw);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .meta { font-size: 12px; color: #cbd5e1; }
+    .badge { padding: 4px 8px; border-radius: 999px; background: #22c55e33; color: #bbf7d0; border: 1px solid #22c55e55; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <div class="meta">Mini Stack Demo</div>
+        <strong>O‘yin: orblarni to‘pla, qizil to‘siqlardan qoch</strong>
+      </div>
+      <span class="badge">WASD / ←↑→↓</span>
+    </header>
+    <canvas id="c" width="500" height="340"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('c')
+    const ctx = canvas.getContext('2d')
+    const keys = new Set()
+    const player = { x: 80, y: 160, r: 12, speed: 2.2 }
+    let score = 0
+    let orbs = []
+    let spikes = []
+
+    function spawnOrb() {
+      orbs.push({ x: Math.random() * 460 + 20, y: Math.random() * 300 + 20, r: 6 })
+      if (orbs.length > 6) orbs.shift()
+    }
+
+    function spawnSpike() {
+      const dir = Math.random() > 0.5 ? 1 : -1
+      spikes.push({
+        x: dir === 1 ? -20 : 520,
+        y: Math.random() * 260 + 40,
+        w: 18,
+        h: 18,
+        vx: dir * (1.4 + Math.random() * 1.6),
+      })
+      if (spikes.length > 5) spikes.shift()
+    }
+
+    function handleInput() {
+      if (keys.has('ArrowUp') || keys.has('w')) player.y -= player.speed
+      if (keys.has('ArrowDown') || keys.has('s')) player.y += player.speed
+      if (keys.has('ArrowLeft') || keys.has('a')) player.x -= player.speed
+      if (keys.has('ArrowRight') || keys.has('d')) player.x += player.speed
+      player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x))
+      player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y))
+    }
+
+    function draw() {
+      ctx.fillStyle = '#0b1220'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      ctx.strokeStyle = '#1f2937'
+      for (let i = 0; i < canvas.width; i += 20) {
+        ctx.beginPath()
+        ctx.moveTo(i, 0)
+        ctx.lineTo(i, canvas.height)
+        ctx.stroke()
+      }
+
+      ctx.fillStyle = '#fbbf24'
+      ctx.beginPath()
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = '#22c55e'
+      orbs.forEach((o) => {
+        ctx.beginPath()
+        ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2)
+        ctx.fill()
+      })
+
+      ctx.fillStyle = '#ef4444'
+      spikes.forEach((s) => {
+        ctx.fillRect(s.x, s.y, s.w, s.h)
+      })
+
+      ctx.fillStyle = '#e5e7eb'
+      ctx.font = '14px system-ui'
+      ctx.fillText(`Score: ${score}`, 14, 22)
+    }
+
+    function update() {
+      handleInput()
+      orbs = orbs.filter((o) => {
+        const dx = player.x - o.x
+        const dy = player.y - o.y
+        const dist = Math.hypot(dx, dy)
+        if (dist < player.r + o.r) {
+          score += 10
+          spawnOrb()
+          return false
+        }
+        return true
+      })
+
+      spikes.forEach((s) => {
+        s.x += s.vx
+      })
+      spikes = spikes.filter((s) => s.x > -40 && s.x < 540)
+
+      spikes.forEach((s) => {
+        const dx = player.x - (s.x + s.w / 2)
+        const dy = player.y - (s.y + s.h / 2)
+        if (Math.abs(dx) < player.r + s.w / 2 && Math.abs(dy) < player.r + s.h / 2) {
+          score = Math.max(0, score - 15)
+          s.x += s.vx * 12
+        }
+      })
+    }
+
+    function loop() {
+      update()
+      draw()
+      requestAnimationFrame(loop)
+    }
+
+    setInterval(spawnOrb, 1400)
+    setInterval(spawnSpike, 1600)
+    spawnOrb()
+    spawnOrb()
+
+    window.addEventListener('keydown', (e) => keys.add(e.key))
+    window.addEventListener('keyup', (e) => keys.delete(e.key))
+    loop()
+  </script>
+</body>
+</html>
