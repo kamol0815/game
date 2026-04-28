@@ -94,7 +94,7 @@ function App() {
     return digits
   }
 
-  const grantAccess = (msisdn, role = 'Player', message = 'Tasdiqlandi. O'yinlarni boshlash mumkin.') => {
+  const grantAccess = (msisdn, role = 'Player', message = "Tasdiqlandi. O'yinlarni boshlash mumkin.") => {
     const expiresAt = Date.now() + 24 * 60 * 60 * 1000
     const formattedPhone = `+${msisdn}`
     setUser({ phone: formattedPhone, role })
