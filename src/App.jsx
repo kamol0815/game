@@ -104,6 +104,29 @@ function App() {
     localStorage.setItem(sessionKey, JSON.stringify({ phone: formattedPhone, expiresAt }))
   }
 
+  const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
+  const checkSubscription = async (msisdn) => {
+    const response = await fetch(`${apiBase}/api/subscription/check?msisdn=${msisdn}`)
+    if (!response.ok) {
+      throw new Error(`Subscription check failed: ${response.status}`)
+    }
+    return response.json()
+  }
+
+  const pollSubscription = async (msisdn, attempts = 6, delay = 3000) => {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const checkData = await checkSubscription(msisdn)
+      if (checkData.status === 'ok' || checkData.status === 'bypass') {
+        return checkData
+      }
+      if (attempt < attempts - 1) {
+        await wait(delay)
+      }
+    }
+    return null
+  }
+
   const handleSend = async () => {
     const msisdn = normalizeMsisdn(phone)
     if (!msisdn || msisdn.length !== 12) {
@@ -120,10 +143,7 @@ function App() {
       setLoading({ send: true })
       setFlash('Obuna tekshirilmoqda...')
 
-      const checkRes = await fetch(`${apiBase}/api/subscription/check?msisdn=${msisdn}`)
-      if (!checkRes.ok) throw new Error(`Subscription check failed: ${checkRes.status}`)
-
-      const checkData = await checkRes.json()
+      const checkData = await checkSubscription(msisdn)
       if (checkData.status === 'ok' || checkData.status === 'bypass') {
         grantAccess(msisdn)
         return
@@ -135,7 +155,15 @@ function App() {
         if (!smsRes.ok) throw new Error(`SMS send failed: ${smsRes.status}`)
 
         await smsRes.json()
-        setFlash('Obuna topilmadi. SMS habarnoma yuborildi. Obuna faollashgach qayta urinib ko‘ring.')
+        setFlash('SMS yuborildi. Obuna faollashuvi tekshirilmoqda...')
+
+        const activatedSubscription = await pollSubscription(msisdn)
+        if (activatedSubscription) {
+          grantAccess(msisdn, 'Player', 'Obuna faollashdi. O‘yinlarni boshlash mumkin.')
+          return
+        }
+
+        setFlash('SMS yuborildi, lekin obuna hali faollashmadi. Birozdan keyin yana urinib ko‘ring.')
         return
       }
 
